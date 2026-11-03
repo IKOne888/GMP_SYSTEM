@@ -84,6 +84,13 @@ const routes = [
         meta: { title: '需求申报', icon: 'ChatLineSquare' }
       },
       {
+        // 线下培训签到：查看可签到场次并输入签到码完成电子签到
+        path: 'offline',
+        name: 'OfflineSign',
+        component: () => import('@/views/offline/index.vue'),
+        meta: { title: '线下培训签到', icon: 'Checked' }
+      },
+      {
         // 消息中心：独立消息页面
         path: 'messages',
         name: 'Messages',

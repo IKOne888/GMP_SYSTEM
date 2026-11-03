@@ -40,12 +40,16 @@ function getUserRoles() {
  * @returns {boolean} 有权访问返回 true
  */
 function hasRoutePermission(to) {
+  const roles = getUserRoles()
+  // 普通员工仅允许在学员端学习，禁止进入管理端任何菜单（即使路由未设 roles 也需排除）
+  if (roles.includes('EMPLOYEE')) {
+    return false
+  }
   const required = to.meta?.roles
-  // 未限制角色的路由，登录即可访问
+  // 未限制角色的路由，管理端登录即可访问（员工端已在上方拦截）
   if (!required || required.length === 0) {
     return true
   }
-  const roles = getUserRoles()
   return roles.some((role) => required.includes(role))
 }
 
@@ -190,6 +194,13 @@ const routes = [
         meta: { title: '培训计划', icon: 'Calendar', roles: ROLE_GROUPS.TRAINING }
       },
       {
+        // 线下培训登记与电子签到：场次登记、签到码生成、签到明细与补签
+        path: 'offline',
+        name: 'TrainingOffline',
+        component: () => import('@/views/training/offline/index.vue'),
+        meta: { title: '线下培训', icon: 'Location', roles: ROLE_GROUPS.TRAINING }
+      },
+      {
         // 员工培训档案：按员工查看学习/考试/证书三合一档案
         path: 'archive',
         name: 'TrainingArchive',
@@ -273,6 +284,17 @@ router.beforeEach((to, from, next) => {
   }
   // 未登录跳转登录页
   if (!token) {
+    next('/login')
+    return
+  }
+  // 普通员工（EMPLOYEE）不允许进入管理端任何页面：提示并清除管理端登录态，跳转登录页
+  // （员工端与管理端共用账号，但前端各自独立；学员端用 student_token，管理端用 token）
+  const roles = getUserRoles()
+  if (roles.includes('EMPLOYEE')) {
+    // 清除管理端登录态，避免后续自动登录继续报错
+    localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
+    ElMessage.warning('您的角色是普通员工，请使用学员端（http://localhost:3002）观看学习。如需管理员账号请联系系统管理员')
     next('/login')
     return
   }

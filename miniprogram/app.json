@@ -15,7 +15,8 @@
     "pages/profile/record",
     "pages/profile/certificate",
     "pages/demand/list",
-    "pages/demand/submit"
+    "pages/demand/submit",
+    "pages/offline/sign"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1890ff",

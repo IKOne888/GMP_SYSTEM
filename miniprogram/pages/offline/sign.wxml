@@ -1,0 +1,103 @@
+<!--pages/offline/sign.wxml - 线下培训电子签到-->
+<view class="page-offline">
+  <!-- 页签切换 -->
+  <view class="tab-bar">
+    <view class="tab-item {{tab === 'signable' ? 'active' : ''}}" data-tab="signable" bindtap="onTabTap">
+      可签到场次
+    </view>
+    <view class="tab-item {{tab === 'records' ? 'active' : ''}}" data-tab="records" bindtap="onTabTap">
+      我的签到记录
+    </view>
+  </view>
+
+  <!-- 可签到场次 -->
+  <view class="list-wrap container" wx:if="{{tab === 'signable'}}">
+    <block wx:if="{{signableList.length > 0}}">
+      <view class="training-card card" wx:for="{{signableList}}" wx:key="id">
+        <view class="training-head flex-between">
+          <text class="training-title ellipsis">{{item.title}}</text>
+          <text class="tag {{item.phaseClass}}">{{item.phaseText}}</text>
+        </view>
+
+        <view class="info-row">
+          <text class="info-label">培训师</text>
+          <text class="info-value ellipsis">{{item.trainer}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">培训地点</text>
+          <text class="info-value ellipsis">{{item.location}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">培训时间</text>
+          <text class="info-value">{{item.timeRangeText}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">签到窗口</text>
+          <text class="info-value">{{item.signWindowText}}</text>
+        </view>
+
+        <view class="training-foot flex-between">
+          <text class="signed-text" wx:if="{{item.signed}}">已签到：{{item.signTimeText}}</text>
+          <text class="signed-text" wx:else>尚未签到</text>
+          <button
+            class="btn-primary sign-btn"
+            wx:if="{{item.canSign}}"
+            data-id="{{item.id}}"
+            bindtap="onSignTap"
+          >去签到</button>
+          <button class="btn-disabled sign-btn" wx:elif="{{!item.signed}}" disabled>未开放</button>
+          <button class="btn-disabled sign-btn" wx:else disabled>已签到</button>
+        </view>
+      </view>
+    </block>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loadingSignable && signableList.length === 0}}">
+      <text class="empty-text">暂无可签到的线下培训场次</text>
+    </view>
+    <view class="loading-wrap" wx:if="{{loadingSignable}}">
+      <text class="loading-text">加载中...</text>
+    </view>
+  </view>
+
+  <!-- 我的签到记录 -->
+  <view class="list-wrap container" wx:if="{{tab === 'records'}}">
+    <block wx:if="{{recordList.length > 0}}">
+      <view class="training-card card" wx:for="{{recordList}}" wx:key="id">
+        <view class="training-head flex-between">
+          <text class="training-title ellipsis">{{item.trainingTitle}}</text>
+          <text class="tag tag-done">{{item.signTypeText}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">培训师</text>
+          <text class="info-value ellipsis">{{item.trainer}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">培训地点</text>
+          <text class="info-value ellipsis">{{item.location}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">培训时间</text>
+          <text class="info-value">{{item.timeRangeText}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">签到时间</text>
+          <text class="info-value info-value--strong">{{item.signTimeText}}</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loadingRecord && recordList.length === 0}}">
+      <text class="empty-text">暂无签到记录</text>
+    </view>
+    <view class="loading-wrap" wx:if="{{loadingRecord}}">
+      <text class="loading-text">加载中...</text>
+    </view>
+  </view>
+
+  <!-- 底部说明 -->
+  <view class="tip-bar">
+    <text class="tip-text">签到码由培训管理员在签到窗口内提供，签到时间与重复签到均由系统校验</text>
+  </view>
+</view>

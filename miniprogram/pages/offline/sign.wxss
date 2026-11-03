@@ -1,0 +1,127 @@
+/* pages/offline/sign.wxss - 线下培训电子签到 */
+
+.page-offline {
+  padding-bottom: 120rpx;
+}
+
+/* 页签切换 */
+.tab-bar {
+  display: flex;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 26rpx 0;
+  font-size: 28rpx;
+  color: #666;
+  position: relative;
+}
+
+.tab-item.active {
+  color: #1890ff;
+  font-weight: bold;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 80rpx;
+  height: 4rpx;
+  background: #1890ff;
+  border-radius: 2rpx;
+  transform: translateX(-50%);
+}
+
+/* 列表容器 */
+.list-wrap {
+  padding-top: 20rpx;
+}
+
+/* 场次卡片 */
+.training-card {
+  margin-bottom: 20rpx;
+}
+
+.training-head {
+  margin-bottom: 18rpx;
+}
+
+.training-title {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-right: 16rpx;
+}
+
+/* 卡片内信息行 */
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12rpx;
+}
+
+.info-label {
+  width: 140rpx;
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.info-value {
+  flex: 1;
+  font-size: 26rpx;
+  color: #555;
+  line-height: 1.5;
+}
+
+.info-value--strong {
+  color: #1890ff;
+  font-weight: bold;
+}
+
+/* 卡片底部操作区 */
+.training-foot {
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.signed-text {
+  flex: 1;
+  font-size: 24rpx;
+  color: #999;
+  margin-right: 16rpx;
+}
+
+.sign-btn {
+  flex-shrink: 0;
+  width: 160rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  font-size: 26rpx;
+  padding: 0;
+  border-radius: 32rpx;
+}
+
+/* 底部说明 */
+.tip-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18rpx 30rpx;
+  background: #fff;
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.tip-text {
+  font-size: 22rpx;
+  color: #999;
+  line-height: 1.5;
+}

@@ -177,6 +177,11 @@ Page({
     wx.navigateTo({ url: '/pages/profile/certificate' })
   },
 
+  /** 线下培训电子签到 */
+  onGoOffline() {
+    wx.navigateTo({ url: '/pages/offline/sign' })
+  },
+
   /** 培训需求申报（进入我的申报列表） */
   onGoDemand() {
     wx.navigateTo({ url: '/pages/demand/list' })

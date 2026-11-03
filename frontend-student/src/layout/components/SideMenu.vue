@@ -48,6 +48,12 @@
         <span>需求申报</span>
       </el-menu-item>
 
+      <!-- 线下培训签到：凭签到码完成电子签到 -->
+      <el-menu-item index="/offline">
+        <el-icon><Checked /></el-icon>
+        <span>线下培训签到</span>
+      </el-menu-item>
+
       <!-- 消息中心：站内消息列表 -->
       <el-menu-item index="/messages">
         <el-icon><Bell /></el-icon>

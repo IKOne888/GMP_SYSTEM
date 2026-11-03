@@ -55,7 +55,7 @@
             <artifactId>sa-token-spring-boot-starter</artifactId>
             <version>${sa-token.version}</version>
         </dependency>
-        <!-- Sa-Token 整合 Redis（1.37.0 起组件名由 sa-token-dao-redis-jackson 更名为 sa-token-redis-jackson） -->
+        <!-- Sa-Token 整合 Redis-->
         <dependency>
             <groupId>cn.dev33</groupId>
             <artifactId>sa-token-redis-jackson</artifactId>
@@ -97,7 +97,7 @@
             <version>${minio.version}</version>
         </dependency>
 
-        <!-- Lombok（显式指定版本以兼容 JDK 17/21，Spring Boot 2.7 默认 1.18.28 不支持 JDK 21） -->
+        <!-- Lombok  分页查询依赖-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

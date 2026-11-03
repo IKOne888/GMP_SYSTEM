@@ -125,6 +125,11 @@ public class SaTokenConfig implements WebMvcConfigurer {
             // 培训需求管理（/training/demands）：登记、处理（采纳/拒绝）、删除均限管理员角色
             SaRouter.match("/training/demands", "/training/demands/**")
                     .check(r -> StpUtil.checkRoleOr("SUPER_ADMIN", "QA_MANAGER", "TRAINING_ADMIN"));
+            // 线下培训登记与电子签到（/training/offline/**）：场次登记、签到码管理、
+            // 签到明细查询与导出、补签均限管理员角色；学员端签到走 /study/offline/**，
+            // 仅需登录，数据归属由 Service 层按登录态强制隔离
+            SaRouter.match("/training/offline", "/training/offline/**")
+                    .check(r -> StpUtil.checkRoleOr("SUPER_ADMIN", "QA_MANAGER", "TRAINING_ADMIN"));
             // PDF 课件管理（/training/course-pdfs）：上传、预览、启停、删除均限管理员角色
             SaRouter.match("/training/course-pdfs", "/training/course-pdfs/**")
                     .check(r -> StpUtil.checkRoleOr("SUPER_ADMIN", "QA_MANAGER", "TRAINING_ADMIN"));

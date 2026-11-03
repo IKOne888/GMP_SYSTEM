@@ -46,6 +46,11 @@ application-dev.yml
 *.bak
 *.swp
 *~
+# Vite 构建期临时文件（形如 vite.config.js.timestamp-xxxx.mjs）
+vite.config.js.timestamp-*
+# PDF 解析临时产物（仅本地分析用，属一次性脚本与文本）
+_extract_pdf.py
+docs/_pdf_text.txt
 
 # ==================== 后端运行时数据 ====================
 backend/minio-data/
