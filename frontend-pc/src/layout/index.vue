@@ -128,8 +128,10 @@ const userRoles = computed(() => {
 // 当前激活菜单
 const activeMenu = computed(() => route.path)
 
-// 判断当前用户是否具备某路由所需的角色（未配置 roles 表示登录即可见）
+// 判断当前用户是否具备某路由所需的角色（未配置 roles 表示管理端登录即可见）
 function canSeeRoute(meta) {
+  // 普通员工仅允许在学员端学习，管理端所有菜单均隐藏
+  if (userRoles.value.includes('EMPLOYEE')) return false
   const required = meta?.roles
   if (!required || required.length === 0) return true
   return userRoles.value.some((role) => required.includes(role))

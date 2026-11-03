@@ -86,6 +86,10 @@ public class TrExamPaperServiceImpl extends ServiceImpl<TrExamPaperMapper, TrExa
     private final SysUserRoleMapper sysUserRoleMapper;
     /** 站内信 Service（统一消息写入入口） */
     private final SysMessageService sysMessageService;
+    /** 题库 Mapper（按题型/难度随机抽题） */
+    private final com.gmp.mapper.TrQuestionMapper trQuestionMapper;
+    /** 试卷-题目关系 Mapper（组卷后批量落库） */
+    private final com.gmp.mapper.TrPaperQuestionMapper trPaperQuestionMapper;
 
     static {
         STATUS_TO_INT.put("draft", 0);
@@ -127,8 +131,9 @@ public class TrExamPaperServiceImpl extends ServiceImpl<TrExamPaperMapper, TrExa
         checkCodeUnique(dto.getCode(), null);
         TrExamPaper paper = buildEntity(dto);
         baseMapper.insert(paper);
-        // 新增即为"已发布"时，立即向学员端下发考试通知并生成任务
+        // 新增即为"已发布"时，先组卷再向学员端下发
         if (paper.getStatus() != null && paper.getStatus() == STATUS_PUBLISHED) {
+            composePaper(paper);
             publishToStudents(paper);
         }
     }
@@ -147,15 +152,111 @@ public class TrExamPaperServiceImpl extends ServiceImpl<TrExamPaperMapper, TrExa
         paper.setId(dto.getId());
         baseMapper.updateById(paper);
 
-        // 触发学员端下发的两种情形（其他情况仅改字段，不重复下发）：
+        // 触发学员端下发的两种情形：
         // 1) 状态首次由非发布变为发布；
-        // 2) 试卷本就是已发布，但绑定的课程发生了变化（含由"未绑定"补绑课程）——
-        //    此前试卷 course_id 为空，学员端按课程匹配不到它，必须补发通知并补建任务。
+        // 2) 试卷本就是已发布，但绑定课程发生了变化——必须补通知并补建任务。
+        // 以上两种情形都必须先 composePaper（确保试卷里有题）再 publishToStudents。
         boolean firstPublish = exist.getStatus() == null || exist.getStatus() != STATUS_PUBLISHED;
         boolean courseChanged = !Objects.equals(exist.getCourseId(), paper.getCourseId());
+        boolean rulesChanged = !Objects.equals(exist.getRules(), paper.getRules());
         if (paper.getStatus() != null && paper.getStatus() == STATUS_PUBLISHED
-                && (firstPublish || courseChanged)) {
+                && (firstPublish || courseChanged || rulesChanged)) {
+            composePaper(paper);
             publishToStudents(paper);
+        }
+    }
+
+    /**
+     * 按组卷规则从题库随机抽题，将题目落到 tr_paper_question。
+     * 只在试卷"发布"状态或"发布变更（首次发布/课程变更/规则变更）"时调用。
+     * <p>
+     * 流程：
+     * 1. 清空该试卷旧题目记录（支持编辑试卷后重新组卷）；
+     * 2. 逐条解析 rules JSON，按题型+难度从题库随机抽指定数量；
+     * 3. 题库数量不足则抛业务异常阻止发布；
+     * 4. 抽中题目批量写入 tr_paper_question，每条记录携带 score 分值与 sort 排序号。
+     *
+     * @param paper 已保存的试卷实体（id 已有、status=published、rules 已由 buildEntity 序列化）
+     */
+    private void composePaper(TrExamPaper paper) {
+        // 0. 前置校验：试卷必须绑定课程，题库按 courseId 过滤，否则无意义
+        if (paper.getCourseId() == null) {
+            throw new BusinessException(com.gmp.common.ErrorCode.PARAM_ERROR,
+                    "试卷未绑定课程，无法按课程题库组卷，请先选择培训课程");
+        }
+
+        // 1. 清空旧题：编辑已发布试卷规则后重新组卷用
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.gmp.entity.TrPaperQuestion> del =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        del.eq(com.gmp.entity.TrPaperQuestion::getPaperId, paper.getId());
+        trPaperQuestionMapper.delete(del);
+
+        // 2. 规则为空（草稿/手动选题模式暂未实现）→ 跳过
+        String rulesJson = paper.getRules();
+        if (StrUtil.isBlank(rulesJson)) {
+            return;
+        }
+        java.util.List<PaperRuleDTO> rules = JSONUtil.toList(rulesJson, PaperRuleDTO.class);
+
+        // 3. 逐条规则抽题 + 落库
+        int sort = 0;
+        for (PaperRuleDTO rule : rules) {
+            // 题型字符串 → 数据库整数（1单选/2多选/3判断/4填空/5简答）
+            Integer typeInt = convertQuestionType(rule.getType());
+            // 按题型 + 课程ID（核心：该课程的题库）+ 难度（可选）+ 状态启用 查题，RAND() 保证随机
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.gmp.entity.TrQuestion> qWrap =
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+            qWrap.eq(com.gmp.entity.TrQuestion::getStatus, 1)
+                 .eq(com.gmp.entity.TrQuestion::getCourseId, paper.getCourseId())
+                 .eq(com.gmp.entity.TrQuestion::getQuestionType, typeInt)
+                 .last("ORDER BY RAND() LIMIT " + rule.getCount());
+            if (StrUtil.isNotBlank(rule.getDifficulty())) {
+                qWrap.eq(com.gmp.entity.TrQuestion::getDifficulty, convertDifficulty(rule.getDifficulty()));
+            }
+            java.util.List<com.gmp.entity.TrQuestion> picked = trQuestionMapper.selectList(qWrap);
+
+            // 4. 题目数量不足则阻止发布，给出具体规则提示
+            if (picked.size() < rule.getCount()) {
+                throw new BusinessException(com.gmp.common.ErrorCode.BUSINESS_ERROR,
+                        String.format("课程(ID=%d)题库可用题数不足，无法组卷：题型=%s 难度=%s 需要%d 实际%d",
+                                paper.getCourseId(),
+                                rule.getType(),
+                                StrUtil.isBlank(rule.getDifficulty()) ? "不限" : rule.getDifficulty(),
+                                rule.getCount(),
+                                picked.size()));
+            }
+
+            // 5. 批量写入 tr_paper_question
+            for (com.gmp.entity.TrQuestion q : picked) {
+                com.gmp.entity.TrPaperQuestion pq = new com.gmp.entity.TrPaperQuestion();
+                pq.setPaperId(paper.getId());
+                pq.setQuestionId(q.getId());
+                pq.setScore(rule.getScore());
+                pq.setSort(sort++);
+                trPaperQuestionMapper.insert(pq);
+            }
+        }
+    }
+
+    /** 题型字符串（single/multiple/judge/fill）→ 数据库整型（1/2/3/4） */
+    private Integer convertQuestionType(String typeStr) {
+        switch (typeStr) {
+            case "single":   return 1;
+            case "multiple": return 2;
+            case "judge":    return 3;
+            case "fill":     return 4;
+            case "essay":    return 5;
+            default:         return 1;
+        }
+    }
+
+    /** 难度字符串（easy/medium/hard）→ 数据库整型（1/2/3） */
+    private Integer convertDifficulty(String diffStr) {
+        switch (diffStr) {
+            case "easy":   return 1;
+            case "medium": return 2;
+            case "hard":   return 3;
+            default:       return null;
         }
     }
 

@@ -56,6 +56,42 @@
           :key="course.id"
           class="course-card gmp-card gmp-card--hoverable"
         >
+          <!-- 视频封面区：有视频就用 video 抓帧，没有就显示占位 -->
+          <div class="course-cover" @click="goDetail(course)">
+            <!-- 隐藏 video 标签用于自动加载首帧（metadata 加载完自动 seek 1 秒） -->
+            <video
+              v-if="course.firstVideoId"
+              :ref="el => videoRefs[course.id] = el"
+              :src="getVideoStreamUrl(course.firstVideoId)"
+              preload="metadata"
+              muted
+              playsinline
+              @loadeddata="e => onVideoLoaded(e, course.id)"
+              @seeked="e => onVideoSeeked(e, course.id)"
+              @loadedmetadata="e => onVideoMetadata(e, course.id)"
+            />
+            <!-- 封面图片（video 抓帧后替换；无视频时显示占位） -->
+            <div
+              v-if="course.firstVideoId && coverImages[course.id]"
+              class="cover-img"
+              :style="{ backgroundImage: `url(${coverImages[course.id]})` }"
+            ></div>
+            <!-- 占位封面：无视频或视频尚未加载完成 -->
+            <div
+              v-else
+              class="cover-placeholder"
+            >
+              <el-icon :size="48"><VideoPlay /></el-icon>
+              <span v-if="!course.firstVideoId">📚 文档课程</span>
+              <span v-else>视频封面加载中...</span>
+            </div>
+            <!-- 视频数量角标 -->
+            <span
+              v-if="course.videoCount && course.videoCount > 0"
+              class="video-badge"
+            >{{ course.videoCount }} 个视频</span>
+          </div>
+
           <!-- 卡片头部：课程名 + 报名状态标签 -->
           <div class="course-head">
             <span class="course-name" @click="goDetail(course)">{{ course.name }}</span>
@@ -138,11 +174,12 @@
  * 数据来源：GET /study/courses（后端已实现按部门/岗位的推荐逻辑）。
  * 报名动作调用 POST /study/courses/{id}/enroll，成功后可直接进入任务详情开始学习。
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Refresh, Search } from '@element-plus/icons-vue'
+import { Refresh, Search, VideoPlay } from '@element-plus/icons-vue'
 import { getCourses, enrollCourse, getCourseCategories } from '@/api/course'
+import request from '@/utils/request'
 
 const router = useRouter()
 
@@ -156,6 +193,80 @@ const courses = ref([])
 const total = ref(0)
 /** 课程分类下拉选项 */
 const categories = ref([])
+/** 视频 DOM 引用（courseId -> video element） */
+const videoRefs = reactive({})
+/** 封面图 dataURL 映射（courseId -> dataURL） */
+const coverImages = reactive({})
+
+/**
+ * 拼接视频流完整 URL（后端白名单免登录，baseURL + /study/videos/{id}/stream）
+ * @param {number} videoId 视频ID
+ * @returns {string} 完整可访问 URL
+ */
+function getVideoStreamUrl(videoId) {
+  return `${request.defaults.baseURL}/study/videos/${videoId}/stream`
+}
+
+/**
+ * video metadata 加载完毕：尝试 seek 到 1 秒位置用于抓帧
+ * （preload="metadata" 时 duration 已确定，seek 不会触发完整下载）
+ * @param {Event} _e 事件对象（未使用）
+ * @param {number} courseId 课程ID
+ */
+function onVideoMetadata(_e, courseId) {
+  const video = videoRefs[courseId]
+  if (!video) return
+  // 跳到 1 秒位置（或视频总时长的 10%，避免 0 秒黑屏）
+  const seekTarget = Math.min(1, Math.max(0.1, video.duration * 0.1))
+  try {
+    video.currentTime = seekTarget
+  } catch (err) {
+    // 部分浏览器不允许直接设 currentTime，忽略即可
+  }
+}
+
+/**
+ * seek 完成事件：canvas 截帧生成封面 dataURL
+ * @param {Event} _e 事件对象（未使用）
+ * @param {number} courseId 课程ID
+ */
+function onVideoSeeked(_e, courseId) {
+  const video = videoRefs[courseId]
+  if (!video) return
+  try {
+    const canvas = document.createElement('canvas')
+    // 封面尺寸：240 × 135（16:9 缩略图）
+    const W = 240
+    const H = 135
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext('2d')
+    // 先把 canvas 背景设成视频当前帧（drawImage 按视频宽高比例填充到 240×135）
+    const videoW = video.videoWidth || W
+    const videoH = video.videoHeight || H
+    const scale = Math.max(W / videoW, H / videoH)
+    const dw = videoW * scale
+    const dh = videoH * scale
+    const dx = (W - dw) / 2
+    const dy = (H - dh) / 2
+    ctx.drawImage(video, dx, dy, dw, dh)
+    coverImages[courseId] = canvas.toDataURL('image/jpeg', 0.7)
+    // 抓帧成功后把 video 标签隐藏掉，减少性能消耗
+    video.style.display = 'none'
+  } catch (err) {
+    // CORS 跨域视频可能无法 drawImage，忽略（占位图继续显示）
+    console.warn('视频封面抓帧失败:', courseId, err)
+  }
+}
+
+/** 旧版兼容：部分浏览器触发 loadeddata 而非 loadedmetadata */
+function onVideoLoaded(_e, courseId) {
+  const video = videoRefs[courseId]
+  if (!video || video.seeking) return
+  if (video.duration > 0) {
+    onVideoMetadata(_e, courseId)
+  }
+}
 
 /** 查询条件（enrolled 为空串表示全部） */
 const query = reactive({
@@ -293,15 +404,93 @@ onMounted(() => {
 .course-card {
   display: flex;
   flex-direction: column;
-  padding: 18px 20px;
-  min-height: 230px;
+  padding: 0;
+  min-height: 360px;
+  overflow: hidden;
 }
 
+/* ---------- 视频封面区 ---------- */
+.course-cover {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8eef8 100%);
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* video 标签：绝对定位铺满，抓帧后隐藏 */
+.course-cover video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.01; /* 极淡，仅用于加载 metadata 和 seek */
+  pointer-events: none;
+}
+
+/* 封面图片（canvas 抓帧生成 dataURL 后作为背景） */
+.cover-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.25s ease;
+}
+
+/* hover 封面时微微放大 */
+.course-cover:hover .cover-img {
+  transform: scale(1.05);
+}
+
+/* 占位封面（无视频或加载中） */
+.cover-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf3 100%);
+}
+
+.cover-placeholder .el-icon {
+  color: var(--brand-primary);
+  opacity: 0.5;
+}
+
+/* 视频数量角标 */
+.video-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+}
+
+/* ---------- 卡片内容区 ---------- */
 .course-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+  padding: 14px 16px 0;
 }
 
 .course-name {
@@ -323,6 +512,7 @@ onMounted(() => {
   gap: 10px;
   margin-top: 10px;
   flex-wrap: wrap;
+  padding: 0 16px;
 }
 
 .course-code {
@@ -331,7 +521,7 @@ onMounted(() => {
 }
 
 .course-objective {
-  margin: 12px 0;
+  margin: 12px 16px;
   font-size: 13px;
   color: var(--text-regular);
   line-height: 1.7;
@@ -349,6 +539,7 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-secondary);
   flex-wrap: wrap;
+  padding: 0 16px;
 }
 
 .course-meta span {
@@ -358,7 +549,7 @@ onMounted(() => {
 }
 
 .course-sop {
-  margin-top: 8px;
+  margin: 8px 16px 0;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -368,7 +559,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-top: auto;
-  padding-top: 14px;
+  padding: 14px 16px;
   border-top: 1px dashed var(--border-color);
 }
 

@@ -1017,9 +1017,11 @@ public class StudyServiceImpl implements StudyService {
 
         Page<TrCourse> entityPage = courseMapper.selectPage(page, wrapper);
         Map<Long, String> categoryNames = categoryNameMap(entityPage.getRecords());
+        // 批量查每个课程的第一个启用视频ID（用于前端加载封面）
+        Map<Long, Long> firstVideoIds = firstVideoIdMap(entityPage.getRecords());
         Page<StudyCourseVO> voPage = new Page<>(entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
         voPage.setRecords(entityPage.getRecords().stream()
-                .map(c -> toStudyCourseVO(c, categoryNames.get(c.getCategoryId()), taskByCourse))
+                .map(c -> toStudyCourseVO(c, categoryNames.get(c.getCategoryId()), taskByCourse, firstVideoIds))
                 .collect(Collectors.toList()));
         return voPage;
     }
@@ -1031,7 +1033,9 @@ public class StudyServiceImpl implements StudyService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "课程不存在");
         }
         Map<Long, TrTrainingTask> taskByCourse = mapUserTasksByCourse(currentUserId());
-        StudyCourseVO vo = toStudyCourseVO(course, resolveCategoryName(course.getCategoryId()), taskByCourse);
+        // 回填第一个启用视频ID（供前端加载封面）
+        Map<Long, Long> firstVideoIds = firstVideoIdMap(Collections.singletonList(course));
+        StudyCourseVO vo = toStudyCourseVO(course, resolveCategoryName(course.getCategoryId()), taskByCourse, firstVideoIds);
         // 资料数 / 视频数 / 题目数
         vo.setFileCount(courseFileMapper.selectCount(new LambdaQueryWrapper<TrCourseFile>()
                 .eq(TrCourseFile::getCourseId, courseId)
@@ -2284,7 +2288,8 @@ public class StudyServiceImpl implements StudyService {
      * 课程实体转课程 VO（列表/详情共用，详情额外字段由调用方补充）
      */
     private StudyCourseVO toStudyCourseVO(TrCourse course, String categoryName,
-                                          Map<Long, TrTrainingTask> taskByCourse) {
+                                          Map<Long, TrTrainingTask> taskByCourse,
+                                          Map<Long, Long> firstVideoIds) {
         StudyCourseVO vo = new StudyCourseVO();
         vo.setId(course.getId());
         vo.setName(course.getName());
@@ -2296,6 +2301,8 @@ public class StudyServiceImpl implements StudyService {
         vo.setPassScore(course.getPassScore());
         vo.setRetrainPeriod(course.getRetrainPeriod());
         vo.setObjective(course.getTrainingObjective());
+        // 回填第一个启用视频ID（供前端加载封面）
+        vo.setFirstVideoId(firstVideoIds == null ? null : firstVideoIds.get(course.getId()));
         // 报名状态由本人任务反推
         TrTrainingTask task = taskByCourse.get(course.getId());
         vo.setEnrolled(task != null);
@@ -2314,6 +2321,30 @@ public class StudyServiceImpl implements StudyService {
         }
         return categoryMapper.selectBatchIds(ids).stream()
                 .collect(Collectors.toMap(TrCourseCategory::getId, TrCourseCategory::getName, (a, b) -> a));
+    }
+
+    /**
+     * 批量回填每个课程的第一个启用视频ID（用于前端加载视频封面）
+     * <p>
+     * 一次性查询避免 N+1，按课程分组后取每个组内最早创建的启用视频。
+     *
+     * @param courses 课程列表
+     * @return Map<课程ID, 第一个启用视频ID>；课程无视频时 key 不存在（非 null value）
+     */
+    private Map<Long, Long> firstVideoIdMap(List<TrCourse> courses) {
+        Set<Long> courseIds = courses.stream().map(TrCourse::getId).collect(Collectors.toSet());
+        if (courseIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        // 查所有启用视频，按课程分组后取每组第一个
+        List<TrCourseVideo> videos = videoMapper.selectList(new LambdaQueryWrapper<TrCourseVideo>()
+                .in(TrCourseVideo::getCourseId, courseIds)
+                .eq(TrCourseVideo::getStatus, 1)
+                .orderByAsc(TrCourseVideo::getUploadTime));
+        return videos.stream().collect(Collectors.groupingBy(
+                TrCourseVideo::getCourseId,
+                Collectors.collectingAndThen(Collectors.toList(), list -> list.get(0).getId())
+        ));
     }
 
     /**

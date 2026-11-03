@@ -93,6 +93,14 @@
         <el-icon><InfoFilled /></el-icon>
         连续 5 次输入错误将锁定账号 10 分钟
       </p>
+
+      <!-- 切换入口：学员端登录页 → 管理端登录页 -->
+      <div class="login-switch">
+        <span class="switch-label">管理员账号登录？</span>
+        <el-button link type="primary" class="switch-btn" @click="switchToAdmin">
+          使用管理员账号登录 →
+        </el-button>
+      </div>
     </div>
 
     <!-- 页脚 -->
@@ -213,6 +221,15 @@ onMounted(() => {
   loadRememberedUser()
   loadCaptcha()
 })
+
+/**
+ * 跳转到管理端登录页（新标签页打开 http://localhost:3000）
+ * 开发环境两端独立端口，生产环境可改为同域名不同路径
+ */
+function switchToAdmin() {
+  const adminUrl = `${window.location.protocol}//${window.location.hostname}:3000/login`
+  window.open(adminUrl, '_blank')
+}
 </script>
 
 <style scoped>
@@ -359,6 +376,28 @@ onMounted(() => {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* 两端切换入口：居中文案 + link 按钮 */
+.login-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-color);
+  font-size: 13px;
+}
+
+.switch-label {
+  color: var(--text-secondary);
+}
+
+.switch-btn {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .login-footer {

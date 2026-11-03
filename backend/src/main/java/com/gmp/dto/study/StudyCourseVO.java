@@ -65,4 +65,7 @@ public class StudyCourseVO {
 
     @ApiModelProperty("适用岗位名称（仅详情返回）")
     private String positionName;
+
+    @ApiModelProperty("课程关联的第一个启用视频ID（列表/详情均返回，前端用于加载视频封面）")
+    private Long firstVideoId;
 }

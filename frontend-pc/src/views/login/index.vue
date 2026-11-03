@@ -68,6 +68,13 @@
         </el-form-item>
       </el-form>
     </div>
+    <!-- 切换入口：管理端登录页 → 学员端登录页 -->
+    <div class="login-switch">
+      <span class="switch-label">学员账号登录？</span>
+      <el-button link type="primary" class="switch-btn" @click="switchToStudent">
+        使用学员账号登录 →
+      </el-button>
+    </div>
     <div class="login-footer">
       <p>GMP Training Management System &copy; 2026</p>
     </div>
@@ -169,6 +176,15 @@ onMounted(() => {
   loadRememberedUser()
   fetchCaptcha()
 })
+
+/**
+ * 跳转到学员端登录页（新标签页打开 http://localhost:3002）
+ * 开发环境两端独立端口，生产环境可改为同域名不同路径
+ */
+function switchToStudent() {
+  const studentUrl = `${window.location.protocol}//${window.location.hostname}:3002/login`
+  window.open(studentUrl, '_blank')
+}
 </script>
 
 <style scoped>
@@ -265,6 +281,29 @@ onMounted(() => {
 
 .login-btn {
   width: 100%;
+}
+
+/* 两端切换入口：居中显示在登录卡片下方 */
+.login-switch {
+  position: absolute;
+  left: 66%;
+  top: calc(50% + 260px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #555;
+}
+
+.switch-label {
+  color: rgba(31, 78, 138, 0.7);
+}
+
+.switch-btn {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .login-footer {
