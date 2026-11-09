@@ -16,7 +16,8 @@
     "pages/profile/certificate",
     "pages/demand/list",
     "pages/demand/submit",
-    "pages/offline/sign"
+    "pages/offline/sign",
+    "pages/profile/external-cert"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1890ff",

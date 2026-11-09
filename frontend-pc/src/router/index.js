@@ -201,6 +201,13 @@ const routes = [
         meta: { title: '线下培训', icon: 'Location', roles: ROLE_GROUPS.TRAINING }
       },
       {
+        // 外部专项培训与资质证书：台账登记、审核、有效期跟踪与导出
+        path: 'certificate',
+        name: 'TrainingCertificate',
+        component: () => import('@/views/training/certificate/index.vue'),
+        meta: { title: '资质证书', icon: 'Postcard', roles: ROLE_GROUPS.TRAINING }
+      },
+      {
         // 员工培训档案：按员工查看学习/考试/证书三合一档案
         path: 'archive',
         name: 'TrainingArchive',

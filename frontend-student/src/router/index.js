@@ -91,6 +91,13 @@ const routes = [
         meta: { title: '线下培训签到', icon: 'Checked' }
       },
       {
+        // 我的资质证书：申报外部专项培训与资质证书，跟踪审核与有效期
+        path: 'certificates',
+        name: 'MyCertificates',
+        component: () => import('@/views/certificate/index.vue'),
+        meta: { title: '我的资质证书', icon: 'Postcard' }
+      },
+      {
         // 消息中心：独立消息页面
         path: 'messages',
         name: 'Messages',

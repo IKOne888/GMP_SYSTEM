@@ -1,0 +1,118 @@
+<!--pages/profile/external-cert.wxml - 我的资质证书-->
+<view class="page-ext-cert">
+  <!-- 头部说明 -->
+  <view class="container">
+    <view class="card intro-card">
+      <text class="intro-title">外部专项培训与资质证书</text>
+      <text class="intro-desc">登记外部机构培训与特殊岗位上岗资质，提交后由培训管理员审核</text>
+    </view>
+
+    <!-- 证书列表 -->
+    <view class="cert-list">
+      <block wx:if="{{certList.length > 0}}">
+        <view wx:for="{{certList}}" wx:key="id" class="card cert-card">
+          <view class="cert-head flex-between">
+            <view class="flex">
+              <text class="type-tag">{{item.certTypeText}}</text>
+              <text class="cert-name ellipsis">{{item.certName}}</text>
+            </view>
+            <text class="status-tag {{item.statusClass}}">{{item.statusText}}</text>
+          </view>
+
+          <view class="cert-row">
+            <text class="row-label">证书编号</text>
+            <text class="row-value">{{item.certNo || '—'}}</text>
+          </view>
+          <view class="cert-row">
+            <text class="row-label">发证机构</text>
+            <text class="row-value">{{item.issuer || '—'}}</text>
+          </view>
+          <view class="cert-row">
+            <text class="row-label">发证日期</text>
+            <text class="row-value">{{item.issueDate || '—'}}</text>
+          </view>
+          <view class="cert-row">
+            <text class="row-label">有效期至</text>
+            <text class="row-value">{{item.expireDate || '长期有效'}}</text>
+          </view>
+          <view class="cert-row">
+            <text class="row-label">有效期状态</text>
+            <text class="row-value {{item.expireClass}}">{{item.expireStatusText}}</text>
+          </view>
+
+          <!-- 驳回原因 -->
+          <view class="reject-tip" wx:if="{{item.status === 2 && item.auditRemark}}">
+            <text>驳回原因：{{item.auditRemark}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{!loading && certList.length === 0}}">
+        <text class="empty-text">暂未登记证书，点击下方按钮上传</text>
+      </view>
+      <view class="loading-wrap" wx:if="{{loading}}">
+        <text class="loading-text">加载中...</text>
+      </view>
+    </view>
+
+    <!-- 登记入口 -->
+    <button class="btn-primary submit-btn" bindtap="openForm">＋ 登记证书</button>
+  </view>
+
+  <!-- 登记表单（底部弹层） -->
+  <view class="mask" wx:if="{{formVisible}}" bindtap="closeForm"></view>
+  <view class="form-panel" wx:if="{{formVisible}}">
+    <view class="form-head flex-between">
+      <text class="form-title">登记证书</text>
+      <text class="form-close" bindtap="closeForm">关闭</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">类型</text>
+      <picker range="{{typeOptions}}" value="{{typeIndex}}" bindchange="onTypeChange">
+        <view class="form-picker">{{typeOptions[typeIndex]}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">名称</text>
+      <input class="form-input" placeholder="如：压力容器操作证" maxlength="200"
+             value="{{form.certName}}" bindinput="onNameInput" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">证书编号</text>
+      <input class="form-input" placeholder="选填" maxlength="100"
+             value="{{form.certNo}}" bindinput="onNoInput" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">发证机构</text>
+      <input class="form-input" placeholder="选填" maxlength="200"
+             value="{{form.issuer}}" bindinput="onIssuerInput" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">发证日期</text>
+      <picker mode="date" value="{{form.issueDate}}" bindchange="onIssueDateChange">
+        <view class="form-picker">{{form.issueDate || '请选择'}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">有效期至</text>
+      <picker mode="date" value="{{form.expireDate}}" bindchange="onExpireDateChange">
+        <view class="form-picker">{{form.expireDate || '留空表示长期有效'}}</view>
+      </picker>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">备注</text>
+      <textarea class="form-textarea" placeholder="选填" maxlength="500"
+                value="{{form.remark}}" bindinput="onRemarkInput" />
+    </view>
+
+    <button class="btn-primary" loading="{{submitting}}" bindtap="submitForm">提交审核</button>
+  </view>
+</view>

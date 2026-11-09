@@ -182,6 +182,11 @@ Page({
     wx.navigateTo({ url: '/pages/offline/sign' })
   },
 
+  /** 我的资质证书（外部专项培训与资质证书登记） */
+  onGoExternalCert() {
+    wx.navigateTo({ url: '/pages/profile/external-cert' })
+  },
+
   /** 培训需求申报（进入我的申报列表） */
   onGoDemand() {
     wx.navigateTo({ url: '/pages/demand/list' })

@@ -54,6 +54,12 @@
         <span>线下培训签到</span>
       </el-menu-item>
 
+      <!-- 我的资质证书：外部培训与资质证书申报、审核状态与有效期跟踪 -->
+      <el-menu-item index="/certificates">
+        <el-icon><Postcard /></el-icon>
+        <span>我的资质证书</span>
+      </el-menu-item>
+
       <!-- 消息中心：站内消息列表 -->
       <el-menu-item index="/messages">
         <el-icon><Bell /></el-icon>
